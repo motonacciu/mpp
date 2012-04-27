@@ -30,7 +30,7 @@ class endpoint;
 template <class T>
 struct mpi_type_traits {
 	static inline MPI_Datatype get_type(const T& raw);
-	static inline const size_t get_size(const T& raw) { return 1; }
+	static inline size_t get_size(const T& raw) { return 1; }
 	static inline const T* get_addr(const T& raw) { return &raw; }
 };
 
@@ -63,7 +63,7 @@ inline MPI_Datatype mpi_type_traits<long>::get_type(const long&) {
 template <class T>
 struct mpi_type_traits<std::vector<T>> {
 
-	static inline const size_t get_size(const std::vector<T>& vec) {
+	static inline size_t get_size(const std::vector<T>& vec) {
 		return vec.size();
 	}
 
@@ -83,7 +83,7 @@ struct mpi_type_traits<std::vector<T>> {
 template <class T, size_t N>
 struct mpi_type_traits<std::array<T,N>> {
 
-	inline static const size_t get_size(const std::array<T,N>& vec) { return N; }
+	inline static size_t get_size(const std::array<T,N>& vec) { return N; }
 
 	inline static MPI_Datatype get_type(const std::array<T,N>& vec) {
 		return  mpi_type_traits<T>::get_type( T() );
@@ -100,7 +100,7 @@ struct mpi_type_traits<std::array<T,N>> {
 template <class T>
 struct mpi_type_traits<std::list<T>> {
 
-	static inline const size_t get_size(const std::list<T>& vec) { return 1; }
+	static inline size_t get_size(const std::list<T>& vec) { return 1; }
 
 	static MPI_Datatype get_type(const std::list<T>& l) {
 		// we have to get the create an MPI_Datatype containing the offsets
@@ -119,7 +119,7 @@ struct mpi_type_traits<std::list<T>> {
 		MPI_Address(const_cast<T*>(&l.front()), &base_address);
 
 		*(type_it++) = mpi_type_traits<T>::get_type( l.front() );
-		*(dim_it++) = mpi_type_traits<T>::get_size( l.front() );
+		*(dim_it++) = static_cast<int>(mpi_type_traits<T>::get_size( l.front() ));
 		*(address_it++) = 0;
 
 		typename std::list<T>::const_iterator begin = l.begin();
@@ -132,13 +132,13 @@ struct mpi_type_traits<std::list<T>> {
 				MPI_Address(const_cast<T*>(&curr), &*address_it);
 				*(address_it++) -= base_address;
 				*(type_it++) =  mpi_type_traits<T>::get_type( curr );
-				*(dim_it++) = mpi_type_traits<T>::get_size( curr );
+				*(dim_it++) = static_cast<int>(mpi_type_traits<T>::get_size( curr ));
 
 			}
 		);
 
 		MPI_Datatype list_dt;
-		MPI_Type_create_struct(l.size(), &dimension.front(), &address.front(), &types.front(), &list_dt);
+		MPI_Type_create_struct(static_cast<int>(l.size()), &dimension.front(), &address.front(), &types.front(), &list_dt);
 		MPI_Type_commit( &list_dt );
 
 		return list_dt;
@@ -303,7 +303,7 @@ public:
 	template <class MsgType>
 	inline endpoint& operator<<(const msg_impl<MsgType>& m) {
 		MPI_Datatype&& dt = m.type();
-		if ( MPI_Send( const_cast<void*>(m.addr()), m.size(), dt,
+		if ( MPI_Send( const_cast<void*>(m.addr()), static_cast<int>(m.size()), dt,
 						m_rank, m.tag(), m_comm
 					 ) == MPI_SUCCESS ) {
 			return *this;
@@ -332,7 +332,7 @@ public:
 	template <class MsgType>
 	inline request<MsgType> operator>(const msg_impl<MsgType>& m) {
 		MPI_Request req;
-		if( MPI_Irecv( const_cast<void*>(m.addr()), m.size(), m.type(),
+		if( MPI_Irecv( const_cast<void*>(m.addr()), static_cast<int>(m.size()), m.type(),
 					   m_rank, m.tag(), m_comm, &req
 					 ) != MPI_SUCCESS ) {
 			std::ostringstream ss;
@@ -398,7 +398,7 @@ inline status endpoint::operator>>(RawType& m) {
 template <class MsgType>
 inline status endpoint::operator>>(const msg_impl<MsgType>& m) {
 	MPI_Status s;
-	if(MPI_Recv( const_cast<void*>(m.addr()), m.size(), m.type(),
+	if(MPI_Recv( const_cast<void*>(m.addr()), static_cast<int>(m.size()), m.type(),
 				 m_rank, m.tag(), m_comm, &s
 			   ) == MPI_SUCCESS ) {
 		return status(m_comm, s, m.type());

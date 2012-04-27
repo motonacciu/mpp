@@ -25,15 +25,16 @@ TEST(SendRecv, Scalar) {
 }
 
 TEST(SendRecv, Array) {
+	int datav[] = {2, 4, 6, 8};
+	std::vector<int> data(datav, datav+sizeof(datav)/sizeof(int));
 	if(comm::world.rank() == 0) {
-		comm::world(1) << std::vector<int>( {2, 4, 6, 8} );
+		comm::world(1) << data;
 	} else if (comm::world.rank() == 1) {
 		std::vector<int> vec(4);
 		comm::world(0) >> vec;
 		EXPECT_EQ( static_cast<size_t>(4), vec.size() );
-		std::vector<int> res( {2, 4, 6, 8} );
-		// check whether res == vec
-		EXPECT_TRUE( std::equal(vec.begin(), vec.end(), res.begin(), std::equal_to<int>()) );
+		// check whether received data is equal to original data
+		EXPECT_TRUE( std::equal(vec.begin(), vec.end(), data.begin(), std::equal_to<int>()) );
 	}
 }
 
@@ -79,7 +80,8 @@ TEST(SendRecv, PingPong) {
 TEST(SendRecv, Lists) {
 
 	if ( comm::world.rank() == 0 ) {
-		std::list<int> l = {1,2,3,4,5};
+		int data[] = {1,2,3,4,5};
+		std::list<int> l(data,data+sizeof(data)/sizeof(int));
 		comm::world(1) << l;
 	} else if(comm::world.rank() == 1) {
 		std::vector<int> l(5);
@@ -103,5 +105,5 @@ int main(int argc, char** argv) {
 
 	size_t errcode = RUN_ALL_TESTS();
 	MPI_Finalize();
-	return errcode;
+	return static_cast<int>(errcode);
 }
