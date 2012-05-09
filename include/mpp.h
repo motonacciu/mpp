@@ -398,10 +398,11 @@ inline status endpoint::operator>>(RawType& m) {
 template <class MsgType>
 inline status endpoint::operator>>(const msg_impl<MsgType>& m) {
 	MPI_Status s;
-	if(MPI_Recv( const_cast<void*>(m.addr()), static_cast<int>(m.size()), m.type(),
+	MPI_Datatype dt = m.type();
+	if(MPI_Recv( const_cast<void*>(m.addr()), static_cast<int>(m.size()), dt,
 				 m_rank, m.tag(), m_comm, &s
 			   ) == MPI_SUCCESS ) {
-		return status(m_comm, s, m.type());
+		return status(m_comm, s, dt);
 	}
 	std::ostringstream ss;
 	ss << "ERROR in MPI rank '" << comm::world.rank()
