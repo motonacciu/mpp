@@ -1,154 +1,53 @@
-// ============================================================================
-//
-//					 	 	MPP: An MPI CPP Interface
-//
-// 							  Author: Simone Pellegrini
-// 		   					    Date:   23 Apr. 2011
-//
-// ============================================================================
+/******************************************************************************
+ *
+ * 					 	 	MPP: An MPI CPP Interface
+ *
+ * 					Copyright (C) 2011-2012  Simone Pellegrini
+ *
+ * 	This library is free software; you can redistribute it and/or modify it
+ * 	under the terms of the GNU Lesser General Public License as published by the
+ * 	Free Software Foundation; either version 2.1 of the License, or (at your
+ * 	option) any later version.
+ *
+ * 	This library is distributed in the hope that it will be useful, but WITHOUT
+ * 	ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * 	FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * 	for more details.
+ *
+ * 	You should have received a copy of the GNU Lesser General Public License
+ * 	along with this library; if not, write to the Free Software Foundation,
+ * 	Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ ******************************************************************************/
 
 #pragma once
 
 #include <mpi.h>
+
+#include "type_traits.h"
+
 #include <vector>
 #include <list>
 #include <memory>
+
 #include <stdexcept>
 #include <sstream>
+
 #include <algorithm>
 #include <cassert>
 #include <array>
 
 namespace mpi {
 
+// Expection which is thrown every time a communication fails
+struct comm_error : public std::logic_error {
+
+	comm_error(const std::string& msg) : std::logic_error(msg) { }
+
+};
+
 class comm;
 class endpoint;
-
-//*****************************************************************************
-// 									MPI Type Traits
-//*****************************************************************************
-template <class T>
-struct mpi_type_traits {
-	static inline MPI_Datatype get_type(const T& raw);
-	static inline size_t get_size(const T& raw) { return 1; }
-	static inline const T* get_addr(const T& raw) { return &raw; }
-};
-
-// primitive type traits
-template<>
-inline MPI_Datatype mpi_type_traits<double>::get_type(const double&) {
-	return  MPI_DOUBLE;
-}
-
-template <>
-inline MPI_Datatype mpi_type_traits<int>::get_type(const int&) {
-	return MPI_INT;
-}
-
-template <>
-inline MPI_Datatype mpi_type_traits<float>::get_type(const float&) {
-	return MPI_FLOAT;
-}
-
-template <>
-inline MPI_Datatype mpi_type_traits<long>::get_type(const long&) {
-	return MPI_LONG;
-}
-
-// ... add missing types here ...
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	std::vector<T> traits
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-template <class T>
-struct mpi_type_traits<std::vector<T>> {
-
-	static inline size_t get_size(const std::vector<T>& vec) {
-		return vec.size();
-	}
-
-	static inline MPI_Datatype  get_type(const std::vector<T>& vec) {
-		return  mpi_type_traits<T>::get_type( T() );
-	}
-
-	static inline const T* get_addr(const std::vector<T>& vec) {
-		return  mpi_type_traits<T>::get_addr( vec.front() );
-	}
-
-};
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	std::array<T> traits
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-template <class T, size_t N>
-struct mpi_type_traits<std::array<T,N>> {
-
-	inline static size_t get_size(const std::array<T,N>& vec) { return N; }
-
-	inline static MPI_Datatype get_type(const std::array<T,N>& vec) {
-		return  mpi_type_traits<T>::get_type( T() );
-	}
-
-	static inline const T* get_addr(const std::array<T,N>& vec) {
-		return  mpi_type_traits<T>::get_addr( vec.front() );
-	}
-};
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	std::list<T> traits
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-template <class T>
-struct mpi_type_traits<std::list<T>> {
-
-	static inline size_t get_size(const std::list<T>& vec) { return 1; }
-
-	static MPI_Datatype get_type(const std::list<T>& l) {
-		// we have to get the create an MPI_Datatype containing the offsets
-		// of the current object
-
-		// we consider the offsets starting from the first element
-		std::vector<MPI_Aint> address( l.size() );
-		std::vector<int> dimension( l.size() );
-		std::vector<MPI_Datatype> types( l.size() );
-
-		std::vector<int>::iterator dim_it = dimension.begin();
-		std::vector<MPI_Aint>::iterator address_it = address.begin();
-		std::vector<MPI_Datatype>::iterator type_it = types.begin();
-
-		MPI_Aint base_address;
-		MPI_Address(const_cast<T*>(&l.front()), &base_address);
-
-		*(type_it++) = mpi_type_traits<T>::get_type( l.front() );
-		*(dim_it++) = static_cast<int>(mpi_type_traits<T>::get_size( l.front() ));
-		*(address_it++) = 0;
-
-		typename std::list<T>::const_iterator begin = l.begin();
-		++begin;
-		std::for_each(begin, l.cend(), [&](const T& curr) {
-				assert( address_it != address.end() &&
-						  type_it != types.end() &&
-						  dim_it != dimension.end() );
-
-				MPI_Address(const_cast<T*>(&curr), &*address_it);
-				*(address_it++) -= base_address;
-				*(type_it++) =  mpi_type_traits<T>::get_type( curr );
-				*(dim_it++) = static_cast<int>(mpi_type_traits<T>::get_size( curr ));
-
-			}
-		);
-
-		MPI_Datatype list_dt;
-		MPI_Type_create_struct(static_cast<int>(l.size()), &dimension.front(), &address.front(), &types.front(), &list_dt);
-		MPI_Type_commit( &list_dt );
-
-		return list_dt;
-	}
-
-	static inline const T* get_addr(const std::list<T>& list) {
-		return  mpi_type_traits<T>::get_addr( list.front() );
-	}
-
-};
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // msg: represent a single message which can be provided to the <<, <, >>, >
@@ -156,29 +55,30 @@ struct mpi_type_traits<std::list<T>> {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 template <class MsgTy>
 struct msg_impl {
+
 	typedef MsgTy value_type;
 
 	// Builds a msg wrapping v
-	msg_impl(MsgTy& v, int tag = 0) : m_data(v), m_tag(tag){ }
+	msg_impl(value_type& v, int tag = 0) : m_data(v), m_tag(tag) { }
 
-	// Returns the address to the first element of the contained data
-	inline void* addr() {
-		return (void*) mpi_type_traits<MsgTy>::get_addr(m_data);
-	}
-	inline const void* addr() const {
-		return (const void*) mpi_type_traits<MsgTy>::get_addr(m_data);
+	// Move copy constructor 
+	msg_impl(msg_impl<value_type>&& other) : 
+		m_data(other.m_data), 
+		m_tag(other.m_tag) { }
+
+	inline typename mpi_type_traits<value_type>::element_addr_type addr() const {
+		return mpi_type_traits<value_type>::get_addr(m_data);
 	}
 
-	inline MsgTy& get() { return m_data; }
-	inline const MsgTy& get() const { return m_data; }
+	inline const value_type& get() const { return m_data; }
 
 	// Returns the dimension of this message
 	inline size_t size() const {
-		return mpi_type_traits<MsgTy>::get_size(m_data);
+		return mpi_type_traits<value_type>::get_size(m_data);
 	}
 
 	inline MPI_Datatype type() const {
-		return mpi_type_traits<MsgTy>::get_type(m_data);
+		return mpi_type_traits<value_type>::get_type(std::move(m_data));
 	}
 
 	// getter/setter for m_tag
@@ -186,57 +86,20 @@ struct msg_impl {
 	inline int& tag() { return m_tag; }
 
 private:
-	MsgTy&  m_data;
-	int 	m_tag;
+
+	// Make this class non-copyable 
+	msg_impl(const msg_impl<value_type>& other);
+	msg_impl<value_type> operator=(const msg_impl<value_type>& other);
+
+	value_type&  m_data;
+	int 		 m_tag;
 };
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Specializaton for class MsgTy for const types in this case we don't keep the
-// reference to the object passed to the constructor, but we make a copy of it
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-template <class MsgTy>
-struct msg_impl <const MsgTy> {
-	typedef const MsgTy value_type;
-
-	// Builds a msg wrapping v
-	msg_impl(const MsgTy& v, int tag = 0) : m_data(v), m_tag(tag){ }
-
-	// Returns the enclosed data
-	inline const void* addr() const {
-		return mpi_type_traits<MsgTy>::get_addr(m_data);
-	}
-
-	inline const MsgTy& get() const { return m_data; }
-
-	// Returns the dimension of this message
-	inline size_t size() const {
-		return mpi_type_traits<MsgTy>::get_size(m_data);
-	}
-
-	inline MPI_Datatype type() const {
-		return mpi_type_traits<MsgTy>::get_type(m_data);
-	}
-
-	// getter/setter for m_tag
-	inline const int& tag() const { return m_tag; }
-	inline int& tag() { return m_tag; }
-
-private:
-	const MsgTy m_data;
-	int 		m_tag;
-};
 
 template <class T>
-msg_impl<T> msg(T& raw, int tag=0) { return msg_impl<T>(raw, tag); }
-
-// Expection which is thrown every time a communication fails
-struct comm_error : public std::logic_error {
-	comm_error(const std::string& msg) :
-		std::logic_error(msg) { }
-};
+inline msg_impl<T> msg(T& raw, int tag=0) { return msg_impl<T>(raw, tag); }
 
 class status;
-
 
 template <class T>
 class request;
@@ -244,39 +107,56 @@ class request;
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // comm: is the abstraction of the MPI_Comm class
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-class comm{
-	MPI_Comm comm_m;
-	int comm_size;
+class comm {
 
-	comm(MPI_Comm comm): comm_m(comm), comm_size(-1) { }
+	MPI_Comm m_comm;
+	bool 	 m_initialized;
+	int 	 m_comm_size;
+	int 	 m_rank;
+
+	comm(MPI_Comm comm): 
+		m_comm(comm), 
+		m_initialized(false), 
+		m_comm_size(-1), 
+		m_rank(-1) { }
 
 	// Check whether MPI_Init has been called
-	void check_init() {
+	inline void check_init() {
+
+		if (m_initialized) { return; }
+
 		int flag;
 		MPI_Initialized(&flag);
-		assert(flag != 0 &&
+		assert(flag != 0 && 
 			"FATAL: MPI environment not initialized (MPI_Init not called)");
+
+		m_initialized = true;
+		MPI_Comm_size(m_comm, &m_comm_size);
+		MPI_Comm_rank(m_comm, &m_rank);
 	}
+
 public:
 	// MPI_COMM_WORLD
 	static comm world;
 
-	inline size_t rank() {
+	inline int rank() {
 		check_init();
-		
-		int out_rank;
-		MPI_Comm_rank(comm_m, &out_rank);
-		return out_rank;
+		return m_rank;
 	}
 
-	inline size_t size() {
+	inline int rank() const {
+		assert(m_initialized && "MPI communicator not initialized");
+		return m_rank;
+	}
+
+	inline int size() {
 		check_init();
-		
-		// Get the size for this communicator
-		if(comm_size == -1) {
-			MPI_Comm_size(comm_m, &comm_size);
-		}
-		return comm_size;
+		return m_comm_size;
+	}
+
+	inline int size() const {
+		assert(m_initialized && "MPI communicator not initialized");
+		return m_comm_size;
 	}
 
 	inline endpoint operator()( const int& rank_id );
@@ -291,20 +171,32 @@ comm comm::world = comm(MPI_COMM_WORLD);
 // ronous way.
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class endpoint {
+
 	const int 			m_rank;	 // The rank of this endpoint
 	const MPI_Comm& 	m_comm;  // The MPI communicator this endpoing
 								 // belongs to
+
+	// Make this class non-copyable 
+	endpoint(const endpoint& other);
+	endpoint& operator=(const endpoint& other);
 
 public:
 	endpoint(const int& rank, const MPI_Comm& com):
 		m_rank(rank), m_comm(com) { }
 
+	endpoint(endpoint&& other) :
+		m_rank(other.m_rank), 
+		m_comm(other.m_comm) { }
+
 	// Send a generic message to this endpoint (synchronously)
 	template <class MsgType>
-	inline endpoint& operator<<(const msg_impl<MsgType>& m) {
+	inline endpoint& operator<<(msg_impl<MsgType>&& m) {
 		MPI_Datatype&& dt = m.type();
-		if ( MPI_Send( const_cast<void*>(m.addr()), static_cast<int>(m.size()), dt,
-						m_rank, m.tag(), m_comm
+		if ( MPI_Send( const_cast<void*>(static_cast<const void*>(m.addr())), 
+					   static_cast<int>(m.size()), dt,
+					   m_rank, 
+					   m.tag(), 
+					   m_comm
 					 ) == MPI_SUCCESS ) {
 			return *this;
 		}
@@ -315,10 +207,14 @@ public:
 		throw comm_error( ss.str() );
 	}
 
-	// Send a generic raw type to this endpoint (synchronously)
+	template <class MsgType>
+	inline endpoint& operator<<(const msg_impl<MsgType>& m) {
+		return operator<<(std::move(m));
+	}
+
 	template <class RawType>
 	inline endpoint& operator<<(const RawType& m) {
-		return operator<<(msg_impl<const RawType>(m));
+		return operator<<( std::move( msg_impl<const RawType>(m) ) );
 	}
 
 	// Receive from this endpoint (synchronously)
@@ -326,13 +222,14 @@ public:
 	inline status operator>>(RawType& m);
 
 	template <class MsgType>
-	inline status operator>>(const msg_impl<MsgType>& m);
+	inline status operator>>(msg_impl<MsgType>&& m);
 
 	// Receive from this endpoing (asynchronously)
 	template <class MsgType>
-	inline request<MsgType> operator>(const msg_impl<MsgType>& m) {
+	inline request<MsgType> operator>(msg_impl<MsgType>&& m) {
 		MPI_Request req;
-		if( MPI_Irecv( const_cast<void*>(m.addr()), static_cast<int>(m.size()), m.type(),
+		if( MPI_Irecv( static_cast<void*>(m.addr()), 
+					   static_cast<int>(m.size()), m.type(),
 					   m_rank, m.tag(), m_comm, &req
 					 ) != MPI_SUCCESS ) {
 			std::ostringstream ss;
@@ -341,21 +238,21 @@ public:
 			   << m_rank << "'";
 			throw comm_error( ss.str() );
 		}
-		return request<MsgType>(m_comm, req, m);
+		return request<MsgType>(m_comm, req, std::move(m));
 	}
 
 	// Receive from this endpoing (asynchronously
 	template <class RawType>
 	inline request<RawType> operator>(RawType& m) {
-		return operator>( msg_impl<RawType>( m ) );
+		return operator>( std::move(msg_impl<RawType>(m)) );
 	}
 
 	// Returns the rank of this endpoit
 	inline const int& rank() const { return m_rank; }
 };
 
-endpoint comm::operator()(const int& rank_id) {
-	return endpoint(rank_id, comm_m);
+inline endpoint comm::operator()(const int& rank_id) {
+	return endpoint(rank_id, m_comm);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -364,9 +261,11 @@ endpoint comm::operator()(const int& rank_id) {
 // the message
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class status{
+
 	const MPI_Comm&      m_comm;
     const MPI_Status     m_status;
 	const MPI_Datatype   m_datatype;
+
 public:
 	status(const MPI_Comm& com, const MPI_Status& s, const MPI_Datatype& dt):
 		m_comm(com), m_status(s), m_datatype(dt) { }
@@ -396,10 +295,11 @@ inline status endpoint::operator>>(RawType& m) {
 }
 
 template <class MsgType>
-inline status endpoint::operator>>(const msg_impl<MsgType>& m) {
+inline status endpoint::operator>>(msg_impl<MsgType>&& m) {
 	MPI_Status s;
 	MPI_Datatype dt = m.type();
-	if(MPI_Recv( const_cast<void*>(m.addr()), static_cast<int>(m.size()), dt,
+	if(MPI_Recv( const_cast<void*>(static_cast<const void*>(m.addr())), 
+				 static_cast<int>(m.size()), dt,
 				 m_rank, m.tag(), m_comm, &s
 			   ) == MPI_SUCCESS ) {
 		return status(m_comm, s, dt);
@@ -422,40 +322,45 @@ template <class T>
 class request{
 	MPI_Comm const&     		m_comm;
 	MPI_Request 				m_req;
-	const msg_impl<T>			m_msg;
-	std::shared_ptr<status> 	m_status;
+	msg_impl<T>					m_msg;
+	std::unique_ptr<status> 	m_status;
 	int 		 				done;
 
 public:
-	request(MPI_Comm const& com, MPI_Request req, const msg_impl<T>& msg):
-		m_comm(com), m_req(req), m_msg(msg), done(0) { }
+	request(MPI_Comm const& com, MPI_Request req, msg_impl<T>&& msg):
+		m_comm(com), m_req(req), m_msg(std::move(msg)), done(0) { }
+
+	request(request<T>&& other) : 
+		m_comm( std::move(other.m_comm) ), 
+		m_req( std::move(other.m_req) ), 
+		m_msg( std::move(other.m_msg) ),
+		m_status( std::move(other.m_status) ),
+		done(other.done) { }
 
 	void cancel();
 
-	const T& get() {
+	inline const T& get() {
 		if ( !done ) {
 			MPI_Status stat;
 			// wait to receive the message
 			MPI_Wait(&m_req, &stat);
 			done = 1;
-			m_status = std::make_shared<status>( m_comm, stat, m_msg.type() );
+			m_status = std::unique_ptr<status>( new status(m_comm, stat, m_msg.type()) );
 		}
 		return m_msg.get();
 	}
 
-	status getStatus() {
-		if( isDone() ) {
-			return *m_status;
-		}
+	inline status getStatus() {
+		if( isDone() ) { return *m_status; }
 		throw "not done";
 	}
 
-	bool isDone() {
+	inline bool isDone() {
 		if ( !done ) {
 			MPI_Status stat;
 			MPI_Test(&m_req, &done, &stat);
 			if ( done ) {
-				m_status = std::make_shared<status>( m_comm, stat, m_msg.type() );
+				m_status = std::unique_ptr<status>( new status(m_comm, stat, m_msg.type()) );
 			}
 		}
 		return done;
@@ -464,8 +369,8 @@ public:
 
 const int any = MPI_ANY_SOURCE;
 
-void init(int argc = 0, char* argv[] = NULL){ MPI_Init(&argc, &argv); }
-void finalize(){ MPI_Finalize(); }
+inline void init(int argc = 0, char* argv[] = NULL){ MPI_Init(&argc, &argv); }
+inline void finalize(){ MPI_Finalize(); }
 
 } // end mpi namespace
 

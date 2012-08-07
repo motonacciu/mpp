@@ -31,6 +31,8 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 	# add flags for debug mode
 	set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
 
+	set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -O3")
+
 	# ENABLE PROFILING
 	# add_definitions( -pg )
 	# SET(CMAKE_EXE_LINKER_FLAGS -pg)
@@ -38,11 +40,11 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 
 	# check for -std=c++0x
 	include(CheckCXXCompilerFlag)
-	check_cxx_compiler_flag( -std=c++0x CXX0X_Support )
-	if(CXX0X_Support)
-		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+	check_cxx_compiler_flag( -std=c++11 CXX11_Support )
+	if(CXX11_Support)
+		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 	else()
-		message( "WARNING: --std=c++0x not supported by your compiler!" )
+		message( "WARNING: --std=c++11 not supported by your compiler!" )
 	endif()
 endif()
 
