@@ -7,77 +7,77 @@
 
 using namespace mpi;
 
-TEST(SendRecv, Scalar) {
-	if(comm::world.rank() == 0) {
-		comm::world(1) << 4.2;
-		int val;
-		auto s = comm::world(1) >> val;
-		EXPECT_EQ( 4, val);
-		EXPECT_EQ( 1, s.source().rank() );
-		EXPECT_EQ( 0, s.tag() );
-	} else if (comm::world.rank() == 1) {
-		double val;
-		auto s = comm::world(0) >> val;
-		EXPECT_EQ(4.2, val);
-		EXPECT_EQ( 0, s.source().rank() );
-		EXPECT_EQ(0, s.tag());
-		comm::world(0) << static_cast<int>(floor(val));
-	}
-}
-
-TEST(SendRecv, Array) {
- 	int datav[] = {2, 4, 6, 8};
- 	std::vector<int> data(datav, datav+sizeof(datav)/sizeof(int));
- 	if(comm::world.rank() == 0) {
- 		comm::world(1) << data;
- 	} else if (comm::world.rank() == 1) {
- 		std::vector<int> vec(4);
- 		comm::world(0) >> vec;
- 		EXPECT_EQ( static_cast<size_t>(4), vec.size() );
- 		// check whether received data is equal to original data
- 		EXPECT_TRUE( std::equal(vec.begin(), vec.end(), data.begin(), std::equal_to<int>()) );
- 	}
- }
- 
- TEST(SendRecv, Future) {
- 	if ( comm::world.rank() == 0 ) {
- 		comm::world(1) << 100;
- 	} else if(comm::world.rank() == 1) {
- 		int k;
- 		request<int> r = comm::world(0) > k;
- 		r.get();
- 		EXPECT_EQ(100, k);
- 	}
- }
- 
- TEST(SendRecv, Tags) {
- 
- 	if ( comm::world.rank() == 0 ) {
- 		comm::world(1) << msg<const int>(100, 11);
- 		comm::world(1) << msg<const int>(101, 0);
- 	} else if(comm::world.rank() == 1) {
- 		int k;
- 		comm::world(0) >> msg(k,0);
- 		EXPECT_EQ(101, k);
- 		comm::world(0) >> msg(k,11);
- 		EXPECT_EQ(100, k);
- 	}
- }
- 
- TEST(SendRecv, PingPong) {
- 	int p=0;
- 	if(comm::world.rank() == 0) {
- 		// start the ping
- 		comm::world(1) << p;
- 	}
- 
- 	while ( p <= 10 ) {
- 		auto ep = (comm::world(mpi::any) >> p ).source();
- 		ep << p+1;
- 		EXPECT_TRUE(comm::world.rank()==0?p%2!=0:p%2==0);
- 	}
- }
- 
+//TEST(SendRecv, Scalar) {
+//	if(comm::world.rank() == 0) {
+//		comm::world(1) << 4.2;
+//		int val;
+//		auto s = comm::world(1) >> val;
+//		EXPECT_EQ( 4, val);
+//		EXPECT_EQ( 1, s.source().rank() );
+//		EXPECT_EQ( 0, s.tag() );
+//	} else if (comm::world.rank() == 1) {
+//		double val;
+//		auto s = comm::world(0) >> val;
+//		EXPECT_EQ(4.2, val);
+//		EXPECT_EQ( 0, s.source().rank() );
+//		EXPECT_EQ(0, s.tag());
+//		comm::world(0) << static_cast<int>(floor(val));
+//	}
+//}
+//
+//TEST(SendRecv, Array) {
+// 	int datav[] = {2, 4, 6, 8};
+// 	std::vector<int> data(datav, datav+sizeof(datav)/sizeof(int));
+// 	if(comm::world.rank() == 0) {
+// 		comm::world(1) << data;
+// 	} else if (comm::world.rank() == 1) {
+// 		std::vector<int> vec(4);
+// 		comm::world(0) >> vec;
+// 		EXPECT_EQ( static_cast<size_t>(4), vec.size() );
+// 		// check whether received data is equal to original data
+// 		EXPECT_TRUE( std::equal(vec.begin(), vec.end(), data.begin(), std::equal_to<int>()) );
+// 	}
+// }
+// 
+// TEST(SendRecv, Future) {
+// 	if ( comm::world.rank() == 0 ) {
+// 		comm::world(1) << 100;
+// 	} else if(comm::world.rank() == 1) {
+// 		int k;
+// 		request<int> r = comm::world(0) > k;
+// 		r.get();
+// 		EXPECT_EQ(100, k);
+// 	}
+// }
+// 
+// TEST(SendRecv, Tags) {
+// 
+// 	if ( comm::world.rank() == 0 ) {
+// 		comm::world(1) << msg<const int>(100, 11);
+// 		comm::world(1) << msg<const int>(101, 0);
+// 	} else if(comm::world.rank() == 1) {
+// 		int k;
+// 		comm::world(0) >> msg(k,0);
+// 		EXPECT_EQ(101, k);
+// 		comm::world(0) >> msg(k,11);
+// 		EXPECT_EQ(100, k);
+// 	}
+// }
+// 
+// TEST(SendRecv, PingPong) {
+// 	int p=0;
+// 	if(comm::world.rank() == 0) {
+// 		// start the ping
+// 		comm::world(1) << p;
+// 	}
+// 
+// 	while ( p <= 10 ) {
+// 		auto ep = (comm::world(mpi::any) >> p ).source();
+// 		ep << p+1;
+// 		EXPECT_TRUE(comm::world.rank()==0?p%2!=0:p%2==0);
+// 	}
+// }
+// 
 // TEST(SendRecv, Lists) {
 // 
 // 	if ( comm::world.rank() == 0 ) {
@@ -96,56 +96,76 @@ TEST(SendRecv, Array) {
 // 	}
 // }
 
-TEST(Performance, MppScalar) {
-	
-	MPI_Barrier(MPI_COMM_WORLD);
-	auto start = std::chrono::system_clock::now();
-	// tests a simple send/recv of a scalar value 
-	if (comm::world.rank() == 0) {
-		for(size_t i=0; i<10000; ++i) 
-			comm::world(1) << i;
-	} else {
-		size_t val;
-		for(size_t i=0; i<10000; ++i) {
-			comm::world(0) >> val;
-			EXPECT_EQ(i, val);
-		}
-	}
-	auto end = std::chrono::system_clock::now();
-	
-	size_t elapsed_time = 
-		std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
-
-	std::cout << "MppScalar: " << elapsed_time << " microsec" << std::endl;
-}
 
 TEST(Performance, MpiScalar) {
-
-	MPI_Barrier(MPI_COMM_WORLD);
+	
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-	auto start = std::chrono::system_clock::now();
-	// tests a simple send/recv of a scalar value 
-	if (rank == 0) {
-		for(size_t i=0; i<10000; ++i) 
-			MPI_Send(&i,1,MPI_UNSIGNED_LONG,1,0,MPI_COMM_WORLD);
-	} else {
-		size_t val;
-		for(size_t i=0; i<10000; ++i) {
-			MPI_Recv(&val,1,MPI_UNSIGNED_LONG,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-			EXPECT_EQ(i, val);
+	auto bench = [&rank] () {
+		// warmup
+		if (rank == 0) {
+			for(size_t i=0; i<10000; ++i) 
+				MPI_Send(&i,1,MPI_UNSIGNED_LONG,1,0,MPI_COMM_WORLD);
+		} else {
+			size_t val;
+			for(size_t i=0; i<10000; ++i) {
+				MPI_Status s;
+				MPI_Recv(&val,1,MPI_UNSIGNED_LONG,0,0,MPI_COMM_WORLD,&s);
+				EXPECT_EQ(i, val);
+			}
 		}
-	}
+	};
+
+	MPI_Barrier(MPI_COMM_WORLD);
+	bench();
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	auto start = std::chrono::system_clock::now();
+	bench();
 	auto end = std::chrono::system_clock::now();
 
 	size_t elapsed_time = 
 		std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 
-	std::cout << "MpiScalar: " << elapsed_time << " microsec" << std::endl;
+	if (rank==0)
+		std::cout << "MpiScalar: " << elapsed_time << " microsec" << std::endl;
 
 }
 
+TEST(Performance, MppScalar) {
+
+	using mpi::comm;
+	auto& world = comm::world;
+
+	auto bench = [&]() {
+		// warmup
+		if (world.rank() == 0) {
+			for(size_t i=0; i<10000; ++i) 
+				world(1) << i;
+		} else {
+			size_t val;
+			for(size_t i=0; i<10000; ++i) {
+				world(0) >> val;
+				EXPECT_EQ(i, val);
+			}
+		}
+	};
+
+	MPI_Barrier(MPI_COMM_WORLD);
+	// Warmup
+	bench();
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	auto start = std::chrono::system_clock::now();
+	bench();
+	auto end = std::chrono::system_clock::now();
+	
+	size_t elapsed_time = 
+		std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+	if (world.rank() == 0)
+		std::cout << "MppScalar: " << elapsed_time << " microsec" << std::endl;
+}
 
 int main(int argc, char** argv) {
 	MPI_Init(&argc, &argv);
