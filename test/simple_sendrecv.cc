@@ -7,76 +7,76 @@
 
 using namespace mpi;
 
-//TEST(SendRecv, Scalar) {
-//	if(comm::world.rank() == 0) {
-//		comm::world(1) << 4.2;
-//		int val;
-//		auto s = comm::world(1) >> val;
-//		EXPECT_EQ( 4, val);
-//		EXPECT_EQ( 1, s.source().rank() );
-//		EXPECT_EQ( 0, s.tag() );
-//	} else if (comm::world.rank() == 1) {
-//		double val;
-//		auto s = comm::world(0) >> val;
-//		EXPECT_EQ(4.2, val);
-//		EXPECT_EQ( 0, s.source().rank() );
-//		EXPECT_EQ(0, s.tag());
-//		comm::world(0) << static_cast<int>(floor(val));
-//	}
-//}
-//
-//TEST(SendRecv, Array) {
-// 	int datav[] = {2, 4, 6, 8};
-// 	std::vector<int> data(datav, datav+sizeof(datav)/sizeof(int));
-// 	if(comm::world.rank() == 0) {
-// 		comm::world(1) << data;
-// 	} else if (comm::world.rank() == 1) {
-// 		std::vector<int> vec(4);
-// 		comm::world(0) >> vec;
-// 		EXPECT_EQ( static_cast<size_t>(4), vec.size() );
-// 		// check whether received data is equal to original data
-// 		EXPECT_TRUE( std::equal(vec.begin(), vec.end(), data.begin(), std::equal_to<int>()) );
-// 	}
-// }
-// 
-// TEST(SendRecv, Future) {
-// 	if ( comm::world.rank() == 0 ) {
-// 		comm::world(1) << 100;
-// 	} else if(comm::world.rank() == 1) {
-// 		int k;
-// 		request<int> r = comm::world(0) > k;
-// 		r.get();
-// 		EXPECT_EQ(100, k);
-// 	}
-// }
-// 
-// TEST(SendRecv, Tags) {
-// 
-// 	if ( comm::world.rank() == 0 ) {
-// 		comm::world(1) << msg<const int>(100, 11);
-// 		comm::world(1) << msg<const int>(101, 0);
-// 	} else if(comm::world.rank() == 1) {
-// 		int k;
-// 		comm::world(0) >> msg(k,0);
-// 		EXPECT_EQ(101, k);
-// 		comm::world(0) >> msg(k,11);
-// 		EXPECT_EQ(100, k);
-// 	}
-// }
-// 
-// TEST(SendRecv, PingPong) {
-// 	int p=0;
-// 	if(comm::world.rank() == 0) {
-// 		// start the ping
-// 		comm::world(1) << p;
-// 	}
-// 
-// 	while ( p <= 10 ) {
-// 		auto ep = (comm::world(mpi::any) >> p ).source();
-// 		ep << p+1;
-// 		EXPECT_TRUE(comm::world.rank()==0?p%2!=0:p%2==0);
-// 	}
-// }
+TEST(SendRecv, Scalar) {
+	if(comm::world.rank() == 0) {
+		comm::world(1) << 4.2;
+		int val;
+		auto s = comm::world(1) >> val;
+		EXPECT_EQ( 4, val);
+		EXPECT_EQ( 1, s.source().rank() );
+		EXPECT_EQ( 0, s.tag() );
+	} else if (comm::world.rank() == 1) {
+		double val;
+		auto s = comm::world(0) >> val;
+		EXPECT_EQ(4.2, val);
+		EXPECT_EQ( 0, s.source().rank() );
+		EXPECT_EQ(0, s.tag());
+		comm::world(0) << static_cast<int>(floor(val));
+	}
+}
+
+TEST(SendRecv, Array) {
+ 	int datav[] = {2, 4, 6, 8};
+ 	std::vector<int> data(datav, datav+sizeof(datav)/sizeof(int));
+ 	if(comm::world.rank() == 0) {
+ 		comm::world(1) << data;
+ 	} else if (comm::world.rank() == 1) {
+ 		std::vector<int> vec(4);
+ 		comm::world(0) >> vec;
+ 		EXPECT_EQ( static_cast<size_t>(4), vec.size() );
+ 		// check whether received data is equal to original data
+ 		EXPECT_TRUE( std::equal(vec.begin(), vec.end(), data.begin(), std::equal_to<int>()) );
+ 	}
+ }
+ 
+ TEST(SendRecv, Future) {
+ 	if ( comm::world.rank() == 0 ) {
+ 		comm::world(1) << 100;
+ 	} else if(comm::world.rank() == 1) {
+ 		int k;
+ 		request<int> r = comm::world(0) > k;
+ 		r.get();
+ 		EXPECT_EQ(100, k);
+ 	}
+ }
+ 
+ TEST(SendRecv, Tags) {
+ 
+ 	if ( comm::world.rank() == 0 ) {
+ 		comm::world(1) << msg<const int>(100, 11);
+ 		comm::world(1) << msg<const int>(101, 0);
+ 	} else if(comm::world.rank() == 1) {
+ 		int k;
+ 		comm::world(0) >> msg(k,0);
+ 		EXPECT_EQ(101, k);
+ 		comm::world(0) >> msg(k,11);
+ 		EXPECT_EQ(100, k);
+ 	}
+ }
+ 
+ TEST(SendRecv, PingPong) {
+ 	int p=0;
+ 	if(comm::world.rank() == 0) {
+ 		// start the ping
+ 		comm::world(1) << p;
+ 	}
+ 
+ 	while ( p <= 10 ) {
+ 		auto ep = (comm::world(mpi::any) >> p ).source();
+ 		ep << p+1;
+ 		EXPECT_TRUE(comm::world.rank()==0?p%2!=0:p%2==0);
+ 	}
+ }
 // 
 // TEST(SendRecv, Lists) {
 // 
