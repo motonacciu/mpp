@@ -27,6 +27,7 @@
 #include <list>
 #include <array>
 #include <algorithm>
+#include <complex>
 
 namespace mpi {
 
@@ -47,31 +48,37 @@ struct mpi_type_traits {
 
 };
 
-// primitive type traits
-template<>
-inline MPI_Datatype mpi_type_traits<double>::get_type(double&&) {
-	return  MPI_DOUBLE;
-}
+/** 
+ * Specialization of the mpi_type_traits for primitive types 
+ */
+#define PRIMITIVE(Type, MpiType) \
+	template<> \
+	inline MPI_Datatype mpi_type_traits<Type>::get_type(Type&&) { \
+		return MpiType; \
+	}
 
-template <>
-inline MPI_Datatype mpi_type_traits<int>::get_type(int&&) {
-	return MPI_INT;
-}
+PRIMITIVE(char, 				MPI::CHAR);
+PRIMITIVE(wchar_t,				MPI::WCHAR);
+PRIMITIVE(short, 				MPI::SHORT);
+PRIMITIVE(int, 					MPI::INT);
+PRIMITIVE(long, 				MPI::LONG);
+PRIMITIVE(signed char, 			MPI::SIGNED_CHAR);
+PRIMITIVE(unsigned char, 		MPI::UNSIGNED_CHAR);
+PRIMITIVE(unsigned short, 		MPI::UNSIGNED_SHORT);
+PRIMITIVE(unsigned int,			MPI::UNSIGNED);
+PRIMITIVE(unsigned long,		MPI::UNSIGNED_LONG);
+PRIMITIVE(unsigned long long,	MPI::UNSIGNED_LONG_LONG);
 
-template <>
-inline MPI_Datatype mpi_type_traits<float>::get_type(float&&) {
-	return MPI_FLOAT;
-}
+PRIMITIVE(float, 				MPI::FLOAT);
+PRIMITIVE(double, 				MPI::DOUBLE);
+PRIMITIVE(long double,			MPI::LONG_DOUBLE);
 
-template <>
-inline MPI_Datatype mpi_type_traits<long>::get_type(long&&) {
-	return MPI_LONG;
-}
+PRIMITIVE(bool,						MPI::BOOL);
+PRIMITIVE(std::complex<float>,		MPI::COMPLEX);
+PRIMITIVE(std::complex<double>,		MPI::DOUBLE_COMPLEX);
+PRIMITIVE(std::complex<long double>,	MPI::LONG_DOUBLE_COMPLEX);
 
-template <>
-inline MPI_Datatype mpi_type_traits<size_t>::get_type(size_t&&) {
-	return MPI_UNSIGNED_LONG;
-}
+#undef PRIMITIVE 
 
 // ... add missing types here ...
 
@@ -129,7 +136,7 @@ struct mpi_type_traits<std::array<T,N>> {
 	}
 
 	static inline const T* get_addr(const std::array<T,N>& vec) {
-		return  mpi_type_traits<T>::get_addr( vec.front() );
+		return mpi_type_traits<T>::get_addr( vec.front() );
 	}
 };
 

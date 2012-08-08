@@ -30,13 +30,11 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 
 	# add flags for debug mode
 	set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
-
-	set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -O3")
+	# set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -O3")
 
 	# ENABLE PROFILING
 	# add_definitions( -pg )
 	# SET(CMAKE_EXE_LINKER_FLAGS -pg)
-
 
 	# check for -std=c++0x
 	include(CheckCXXCompilerFlag)
