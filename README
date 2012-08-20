@@ -14,16 +14,17 @@ Publications
 ============
 
 @article{10.1109/PDP.2012.42,
-	author = {Simone Pellegrini and Radu Prodan and Thomas Fahringer},
-	title = {A Lightweight C++ Interface to MPI},
-	journal ={Parallel, Distributed, and Network-Based Processing, Euromicro Conference on},
-	volume = {0},
-	issn = {1066-6192},
-	year = {2012},
-	pages = {3-10},
-	doi = {http://doi.ieeecomputersociety.org/10.1109/PDP.2012.42},
-	publisher = {IEEE Computer Society},
-	address = {Los Alamitos, CA, USA},
+  author = {Simone Pellegrini and Radu Prodan and Thomas Fahringer},
+  title = {A Lightweight C++ Interface to MPI},
+  journal = {Parallel, Distributed, and Network-Based Processing, 
+             Euromicro Conference on},
+  volume = {0},
+  issn = {1066-6192},
+  year = {2012},
+  pages = {3-10},
+  doi = {http://doi.ieeecomputersociety.org/10.1109/PDP.2012.42},
+  publisher = {IEEE Computer Society},
+  address = {Los Alamitos, CA, USA},
 }
 
 
@@ -51,6 +52,8 @@ Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 Acknoledgments
 ==============
 
+Special thanks to Roland Schulz (https://github.com/rolandschulz) for his
+contributions. 
 
 
 
