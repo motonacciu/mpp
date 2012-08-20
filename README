@@ -9,6 +9,15 @@ MPP is an advanced C++ interface for MPI. It is a lightweight interface
 (header-only) which focuses on reducing the interface overhead. It supports
 integration of user datatypes. 
 
+MPP was developed as a proof-of-concept to show that an high level MPI interface
+can be designed without renouncing to performance (which is key in High
+Performance Computing). Experiments have shown that MPP has much lower overhead
+than Boost.MPI (see paper below). 
+
+MPP supports few MPI routines for now (point-to-point), but I am slowly
+extending its functionalities. If you want to help, either with some coding or
+ideas, you are welcome. 
+
 
 Publications
 ============
@@ -30,7 +39,6 @@ Publications
 
 License
 =======
-
                        MPP: Advanced C++ MPI Bindings 
 
                  Copyright (C) 2011-2012  Simone Pellegrini
