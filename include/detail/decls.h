@@ -20,22 +20,33 @@
  *
  ******************************************************************************/
 
-#pragma once
+#pragma once 
 
-#include "detail/decls.h"
+#include <mpi.h>
 
-#include "detail/comm.h"
-#include "detail/endpoint.h"
-#include "detail/message.h"
-#include "detail/status.h"
-#include "detail/request.h"
+#include <stdexcept>
+
+/** 
+ * Contains the forward declaration of the base classes utilized by MPP
+ */
 
 namespace mpi {
 
-const int any = MPI_ANY_SOURCE;
+template <class T>
+class msg_impl;
 
-inline void init(int argc = 0, char* argv[] = NULL){ MPI_Init(&argc, &argv); }
-inline void finalize(){ MPI_Finalize(); }
+class status;
 
-} // end mpi namespace
+template <class T>
+class request;
 
+class endpoint;
+
+// Expection which is thrown every time a communication fails
+struct comm_error : public std::logic_error {
+
+	comm_error(const std::string& msg) : std::logic_error(msg) { }
+
+};
+
+}

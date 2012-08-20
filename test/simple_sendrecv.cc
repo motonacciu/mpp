@@ -105,11 +105,11 @@ TEST(Performance, MpiScalar) {
 	auto bench = [&rank] () {
 		// warmup
 		if (rank == 0) {
-			for(size_t i=0; i<10000; ++i) 
+			for(size_t i=0; i<100000; ++i) 
 				MPI_Send(&i,1,MPI_UNSIGNED_LONG,1,0,MPI_COMM_WORLD);
 		} else {
 			size_t val;
-			for(size_t i=0; i<10000; ++i) {
+			for(size_t i=0; i<100000; ++i) {
 				MPI_Status s;
 				MPI_Recv(&val,1,MPI_UNSIGNED_LONG,0,0,MPI_COMM_WORLD,&s);
 				EXPECT_EQ(i, val);
@@ -141,11 +141,11 @@ TEST(Performance, MppScalar) {
 	auto bench = [&]() {
 		// warmup
 		if (world.rank() == 0) {
-			for(size_t i=0; i<10000; ++i) 
+			for(size_t i=0; i<100000; ++i) 
 				world(1) << i;
 		} else {
 			size_t val;
-			for(size_t i=0; i<10000; ++i) {
+			for(size_t i=0; i<100000; ++i) {
 				world(0) >> val;
 				EXPECT_EQ(i, val);
 			}
