@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include "detail/decls.h"
-
 #include "detail/comm.h"
 #include "detail/endpoint.h"
 #include "detail/message.h"
@@ -34,7 +32,7 @@ namespace mpi {
 
 const int any = MPI_ANY_SOURCE;
 
-inline void init(int argc = 0, char* argv[] = NULL){ MPI_Init(&argc, &argv); }
+inline void init(int argc = 0, char* argv[] = NULL) { MPI_Init(&argc, &argv); }
 inline void finalize(){ MPI_Finalize(); }
 
 } // end mpi namespace
