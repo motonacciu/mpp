@@ -38,7 +38,7 @@ struct status{
 	typedef std::unique_ptr<MPI_Status> mpi_status_ptr;
 
 	status(status&& other) :
-		m_comm(other.m_comm), 
+		m_comm(std::move(other.m_comm)), 
 		m_status(std::move(other.m_status)),
 		m_datatype(other.m_datatype) { }
 
@@ -73,7 +73,7 @@ private:
 	 * the MPP library and it would make no sense if the user could
 	 * automatically generate one of those 
 	 */
-	status(const MPI_Comm& com, mpi_status_ptr&& s, const MPI_Datatype& dt):
+	status(const comm& com, mpi_status_ptr&& s, const MPI_Datatype& dt):
 		m_comm(com), 
 		m_status(std::move(s)), 
 		m_datatype(dt) { }
@@ -81,9 +81,9 @@ private:
 	status(const status& other) = delete;
 	status& operator=(const status& other) = delete;
 
-	const MPI_Comm&      m_comm;
-	mpi_status_ptr		 m_status;
-	const MPI_Datatype   m_datatype;
+	const comm&      	m_comm;
+	mpi_status_ptr		m_status;
+	const MPI_Datatype  m_datatype;
 };
 
 } // end mpi namespace 

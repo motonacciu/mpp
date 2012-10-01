@@ -33,8 +33,8 @@ namespace mpi {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class endpoint {
 
-	const int 			m_rank;	 // The rank of this endpoint
-	const MPI_Comm& 	m_comm;  // The MPI communicator this endpoing
+	const int 		m_rank;	 // The rank of this endpoint
+	const comm& 	m_comm;  // The MPI communicator this endpoing
 								 // belongs to
 
 	// Make this class non-copyable 
@@ -42,12 +42,12 @@ class endpoint {
 	endpoint& operator=(const endpoint& other) = delete;
 
 public:
-	endpoint(const int& rank, const MPI_Comm& com):
+	endpoint(const int& rank, const comm& com):
 		m_rank(rank), m_comm(com) { }
 
 	endpoint(endpoint&& other) :
 		m_rank(other.m_rank), 
-		m_comm(other.m_comm) { }
+		m_comm(std::move(other.m_comm)) { }
 
 
 	// Send a generic message to this endpoint (synchronously)
@@ -115,7 +115,7 @@ inline endpoint& endpoint::send(msg_impl<MsgType>&& m) {
 				   static_cast<int>(m.size()), dt,
 				   m_rank, 
 				   m.tag(), 
-				   m_comm
+				   m_comm.mpi_comm()
 				 ) == MPI_SUCCESS ) {
 		return *this;
 	}
@@ -132,7 +132,7 @@ inline request<MsgType> endpoint::operator>(msg_impl<MsgType>&& m) {
 	MPI_Request req;
 	if( MPI_Irecv( static_cast<void*>(m.addr()), 
 				   static_cast<int>(m.size()), m.type(),
-				   m_rank, m.tag(), m_comm, &req
+				   m_rank, m.tag(), m_comm.mpi_comm(), &req
 				 ) != MPI_SUCCESS ) {
 		std::ostringstream ss;
 		ss << "ERROR in MPI rank '" << comm::world.rank()
@@ -163,7 +163,7 @@ inline status endpoint::operator>>(msg_impl<MsgType>&& m) {
 				 static_cast<int>(m.size()), dt,
 				 m_rank, 
 				 m.tag(), 
-				 m_comm, 
+				 m_comm.mpi_comm(), 
 				 stat.get()
 			   ) == MPI_SUCCESS ) {
 		return status(m_comm, std::move(stat), dt);

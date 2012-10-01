@@ -34,14 +34,14 @@ namespace mpi {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 template <class T>
 class request{
-	MPI_Comm const&     		m_comm;
+	const comm&     			m_comm;
 	MPI_Request 				m_req;
 	msg_impl<T>					m_msg;
 	std::unique_ptr<status> 	m_status;
 	int 		 				done;
 
 public:
-	request(MPI_Comm const& com, MPI_Request req, msg_impl<T>&& msg):
+	request(const comm& com, MPI_Request req, msg_impl<T>&& msg):
 		m_comm(com), m_req(req), m_msg(std::move(msg)), done(0) { }
 
 	request(request<T>&& other) : 

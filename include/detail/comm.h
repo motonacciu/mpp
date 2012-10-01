@@ -81,6 +81,10 @@ public:
 		return m_comm_size;
 	}
 
+	const MPI_Comm& mpi_comm() const { 
+		return m_comm;
+	}
+
 	inline endpoint operator()( const int& rank_id ) const; 
 
 };
@@ -94,7 +98,7 @@ comm comm::world = comm(MPI_COMM_WORLD);
 namespace mpi {
 
 inline endpoint comm::operator()(const int& rank_id) const {
-	return endpoint(rank_id, m_comm);
+	return endpoint(rank_id, *this);
 }
 
 } // end mpi namespace 

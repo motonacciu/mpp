@@ -2,8 +2,8 @@
 MPP: An MPI CPP Interface
 
 
-Abstract
-========
+What's MPP
+==========
 
 MPP is an advanced C++ interface for MPI. It is a lightweight interface
 (header-only) which focuses on reducing the interface overhead. It supports
