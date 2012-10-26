@@ -24,6 +24,20 @@
 
 #include "detail/decls.h"
 
+#define OVERLOAD_SEND(name, impl) \
+	template <class MsgType> \
+	inline endpoint& name(msg_impl<MsgType>&& m) { \
+		return name##_impl(impl, std::move(m)); \
+	} \
+	template <class MsgType> \
+	inline endpoint& name(const msg_impl<MsgType>& m) { \
+		return name(std::move(m)); \
+	} \
+	template <class RawType> \
+	inline endpoint& name(const RawType& m) { \
+		return name( std::move( msg_impl<const RawType>(m) ) ); \
+	} 
+
 namespace mpi {
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,7 +49,9 @@ class endpoint {
 
 	const int 		m_rank;	 // The rank of this endpoint
 	const comm& 	m_comm;  // The MPI communicator this endpoing
-								 // belongs to
+							 // belongs to
+
+	typedef int (*send_ptr)(void*,int,MPI_Datatype,int,int,MPI_Comm);
 
 	// Make this class non-copyable 
 	endpoint(const endpoint& other) = delete;
@@ -49,20 +65,35 @@ public:
 		m_rank(other.m_rank), 
 		m_comm(std::move(other.m_comm)) { }
 
-
 	// Send a generic message to this endpoint (synchronously)
 	template <class MsgType> 
-	inline endpoint& send(msg_impl<MsgType>&& m);
+	inline endpoint& send_impl(const send_ptr& func, msg_impl<MsgType>&& m);
 
-	template <class MsgType>
-	inline endpoint& send(const msg_impl<MsgType>& m) {
-		return send(std::move(m));
+	// MPI_Send wrappers 
+	OVERLOAD_SEND(send, MPI_Send)
+
+	// MPI_Ssend wrappers 
+	OVERLOAD_SEND(ssend, MPI_Ssend)
+
+	// MPI_Rsend wrappers 
+	OVERLOAD_SEND(rsend, MPI_Rsend)
+
+	// Send a generic message to this endpoint (asynchronously)
+	template <class MsgType> 
+	inline request<MsgType> isend(msg_impl<MsgType>&& m);
+
+	// Send a generic message to this endpoint (asynchronously)
+	template <class MsgType> 
+	inline request<MsgType> isend(const msg_impl<MsgType>& m) {
+		return isend(std::move(m));
 	}
 
-	template <class RawType>
-	inline endpoint& send(const RawType& m) {
-		return send( std::move( msg_impl<const RawType>(m) ) );
+	// Send a generic message to this endpoint (asynchronously)
+	template <class RawMsg> 
+	inline request<const RawMsg> isend(const RawMsg& m) {
+		return isend( std::move( msg_impl<const RawMsg>(m) ) );
 	}
+
 
 	template <class MsgType>
 	inline endpoint& operator<<(msg_impl<MsgType>&& m) { 
@@ -78,6 +109,8 @@ public:
 	inline endpoint& operator<<(const RawType& m) {
 		return send( std::move( msg_impl<const RawType>(m) ) );
 	}
+
+
 
 
 	// Receive from this endpoint (synchronously)
@@ -109,14 +142,14 @@ namespace mpi {
 
 // Send a generic message to this endpoint (synchronously)
 template <class MsgType>
-inline endpoint& endpoint::send(msg_impl<MsgType>&& m) {
+inline endpoint& endpoint::send_impl(const send_ptr& func, msg_impl<MsgType>&& m) {
 	MPI_Datatype&& dt = m.type();
-	if ( MPI_Send( const_cast<void*>(static_cast<const void*>(m.addr())), 
-				   static_cast<int>(m.size()), dt,
-				   m_rank, 
-				   m.tag(), 
-				   m_comm.mpi_comm()
-				 ) == MPI_SUCCESS ) {
+	if ( func(const_cast<void*>(static_cast<const void*>(m.addr())), 
+			  static_cast<int>(m.size()), dt,
+			  m_rank, 
+			  m.tag(), 
+			  m_comm.mpi_comm()
+			) == MPI_SUCCESS ) {
 		return *this;
 	}
 	std::ostringstream ss;
@@ -126,13 +159,40 @@ inline endpoint& endpoint::send(msg_impl<MsgType>&& m) {
 	throw comm_error( ss.str() );
 }
 
+// Send a generic message to this endpoint (asynchronously)
+template <class MsgType>
+inline request<MsgType> endpoint::isend(msg_impl<MsgType>&& m) {
+	MPI_Datatype&& dt = m.type();
+	MPI_Request req;
+	if ( MPI_Isend( const_cast<void*>(static_cast<const void*>(m.addr())), 
+			  		static_cast<int>(m.size()), dt,
+			  		m_rank, 
+			  		m.tag(), 
+			  		m_comm.mpi_comm(),
+			  		&req
+				) != MPI_SUCCESS ) 
+	{
+		std::ostringstream ss;
+		ss << "ERROR in MPI rank '" << comm::world.rank()
+		   << "': Failed to send message to destination rank '"
+		   << m_rank << "'";
+
+		throw comm_error( ss.str() );
+	}
+	return request<MsgType>(m_comm, req, std::move(m));
+}
+
 // Receive from this endpoing (asynchronously)
 template <class MsgType>
 inline request<MsgType> endpoint::operator>(msg_impl<MsgType>&& m) {
 	MPI_Request req;
 	if( MPI_Irecv( static_cast<void*>(m.addr()), 
-				   static_cast<int>(m.size()), m.type(),
-				   m_rank, m.tag(), m_comm.mpi_comm(), &req
+				   static_cast<int>(m.size()), 
+				   m.type(),
+				   m_rank, 
+				   m.tag(), 
+				   m_comm.mpi_comm(), 
+				   &req
 				 ) != MPI_SUCCESS ) {
 		std::ostringstream ss;
 		ss << "ERROR in MPI rank '" << comm::world.rank()

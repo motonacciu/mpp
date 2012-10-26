@@ -25,6 +25,25 @@ TEST(SendRecv, Scalar) {
 	}
 }
 
+TEST(SendRecv, ScalarAsynch) {
+	if(comm::world.rank() == 0) {
+		auto req = comm::world(1).isend(4.2);
+		req.get();
+		int val;
+		auto s = comm::world(1) >> val;
+		EXPECT_EQ( 4, val);
+		EXPECT_EQ( 1, s.source().rank() );
+		EXPECT_EQ( 0, s.tag() );
+	} else if (comm::world.rank() == 1) {
+		double val;
+		auto s = comm::world(0) >> val;
+		EXPECT_EQ(4.2, val);
+		EXPECT_EQ( 0, s.source().rank() );
+		EXPECT_EQ(0, s.tag());
+		comm::world(0) << static_cast<int>(floor(val));
+	}
+}
+
 TEST(SendRecv, Array) {
  	int datav[] = {2, 4, 6, 8};
  	std::vector<int> data(datav, datav+sizeof(datav)/sizeof(int));
