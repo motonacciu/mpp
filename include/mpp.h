@@ -33,6 +33,7 @@ namespace mpi {
 const int any = MPI_ANY_SOURCE;
 
 inline void init(int argc = 0, char* argv[] = NULL) { MPI_Init(&argc, &argv); }
+inline void init_thread(int argc = 0, char* argv[] = NULL, int required, int* provided ) { MPI_Init_thread(&argc, &argv, required, &provided); }
 inline void finalize(){ MPI_Finalize(); }
 
 } // end mpi namespace
